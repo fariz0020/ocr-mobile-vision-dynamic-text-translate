@@ -15,15 +15,26 @@
  */
 package com.google.android.gms.samples.vision.ocrreader;
 
+import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.util.Log;
 import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.VolleyLog;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.google.android.gms.samples.vision.ocrreader.ui.camera.GraphicOverlay;
 import com.google.android.gms.vision.text.Text;
 import com.google.android.gms.vision.text.TextBlock;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.List;
 
@@ -35,25 +46,20 @@ public class OcrGraphic extends GraphicOverlay.Graphic {
 
     private int mId;
 
+    Context context;
+
     private static final int TEXT_COLOR = Color.WHITE;
 
     private static Paint sRectPaint;
     private static Paint sTextPaint;
     private final TextBlock mText;
 
+    private static String TAG = MainActivity.class.getSimpleName();
+
     OcrGraphic(GraphicOverlay overlay, TextBlock text) {
         super(overlay);
 
         mText = text;
-
-       /* List<? extends Text> textComponents = mText.getComponents();
-        for(Text currentText : textComponents) {
-            if(currentText.getValue().contentEquals("Saya")){
-                currentText.getValue().replace("Saya", "Panjenengan");
-
-            }
-
-        }*/
 
         if (sRectPaint == null) {
             sRectPaint = new Paint();
@@ -139,6 +145,54 @@ public class OcrGraphic extends GraphicOverlay.Graphic {
             }else {
                 canvas.drawText(currentText.getValue(), left, bottom, sTextPaint);
             }
+
         }
+
+    }
+
+    private void makeJsonArrayRequest() {
+
+        JsonArrayRequest req = new JsonArrayRequest(Request.Method.GET,Config.URL_API+Config.URL_API, null,
+                new Response.Listener<JSONArray>() {
+                    @Override
+                    public void onResponse(JSONArray response) {
+                        Log.d(TAG, response.toString());
+
+                        try {
+                            // Parsing json array response
+                            // loop through each json object
+                            for (int i = 0; i < response.length(); i++) {
+
+                                JSONObject person = (JSONObject) response
+                                        .get(i);
+
+                                String name = person.getString("name");
+                                String email = person.getString("email");
+                                JSONObject phone = person
+                                        .getJSONObject("phone");
+                                String home = phone.getString("home");
+                                String mobile = phone.getString("mobile");
+
+                            }
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            Toast.makeText(AppController.getInstance().getApplicationContext(),
+                                    "Error: " + e.getMessage(),
+                                    Toast.LENGTH_LONG).show();
+                        }
+
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                VolleyLog.d(TAG, "Error: " + error.getMessage());
+                Toast.makeText(AppController.getInstance().getApplicationContext(),
+                error.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(req);
     }
 }
