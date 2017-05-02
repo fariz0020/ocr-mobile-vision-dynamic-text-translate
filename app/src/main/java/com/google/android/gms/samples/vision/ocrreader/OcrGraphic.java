@@ -113,7 +113,7 @@ public class OcrGraphic extends GraphicOverlay.Graphic {
      * Draws the text block annotations for position, size, and raw value on the supplied canvas.
      */
     @Override
-    public void draw(Canvas canvas) {
+    public void draw(final Canvas canvas) {
         TextBlock text = mText;
         if (text == null) {
             return;
@@ -130,52 +130,48 @@ public class OcrGraphic extends GraphicOverlay.Graphic {
         // Break the text into multiple lines and draw each one according to its own bounding box.
         List<? extends Text> textComponents = text.getComponents();
         for(Text currentText : textComponents) {
-            float left = translateX(currentText.getBoundingBox().left);
-            float bottom = translateY(currentText.getBoundingBox().bottom);
-            if(currentText.getValue().equals("Saya")){
-                canvas.drawText("Kulo", left, bottom, sTextPaint);
-            }else if(currentText.getValue().equalsIgnoreCase("Anda")){
-                canvas.drawText("Jenengan", left, bottom, sTextPaint);
-            }else if(currentText.getValue().contains("Kakek")){
-                canvas.drawText("Simbah", left, bottom, sTextPaint);
-            }else if(currentText.getValue().matches("Lari")){
-                canvas.drawText("Mlayu", left, bottom, sTextPaint);
-            }else if(currentText.getValue().contentEquals("Jalan")){
-                canvas.drawText("Mlaku", left, bottom, sTextPaint);
-            }else {
-                canvas.drawText(currentText.getValue(), left, bottom, sTextPaint);
-            }
+            final float left = translateX(currentText.getBoundingBox().left);
+            final float bottom = translateY(currentText.getBoundingBox().bottom);
+
+            getTranslate(currentText.getValue(), new VolleyCallback(){
+                @Override
+                public void onSuccess(String result){
+
+                    canvas.drawText(result, left, bottom, sTextPaint);
+                }
+            });
+
+
 
         }
 
     }
 
-    private void makeJsonArrayRequest() {
-
-        JsonArrayRequest req = new JsonArrayRequest(Request.Method.GET,Config.URL_API+Config.URL_API, null,
+    private void getTranslate(final String string, final VolleyCallback callback) {
+        final String url = String.format(Config.URL_API+Config.API_TRANSLATE+"?text=%1$s", string);
+        JsonArrayRequest req = new JsonArrayRequest(Request.Method.GET, url, null,
                 new Response.Listener<JSONArray>() {
                     @Override
                     public void onResponse(JSONArray response) {
                         Log.d(TAG, response.toString());
-
+                        Log.d(TAG + "url", url);
                         try {
                             // Parsing json array response
                             // loop through each json object
                             for (int i = 0; i < response.length(); i++) {
 
-                                JSONObject person = (JSONObject) response
+                                JSONObject api = (JSONObject) response
                                         .get(i);
 
-                                String name = person.getString("name");
-                                String email = person.getString("email");
-                                JSONObject phone = person
-                                        .getJSONObject("phone");
-                                String home = phone.getString("home");
-                                String mobile = phone.getString("mobile");
+                                String terjemah = api.getString("terjemah");
+
+                                callback.onSuccess(terjemah);
 
                             }
 
+
                         } catch (JSONException e) {
+                            callback.onSuccess(string);
                             e.printStackTrace();
                             Toast.makeText(AppController.getInstance().getApplicationContext(),
                                     "Error: " + e.getMessage(),
@@ -186,6 +182,8 @@ public class OcrGraphic extends GraphicOverlay.Graphic {
                 }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
+
+                callback.onSuccess(string);
                 VolleyLog.d(TAG, "Error: " + error.getMessage());
                 Toast.makeText(AppController.getInstance().getApplicationContext(),
                 error.getMessage(), Toast.LENGTH_SHORT).show();
@@ -194,5 +192,9 @@ public class OcrGraphic extends GraphicOverlay.Graphic {
 
         // Adding request to request queue
         AppController.getInstance().addToRequestQueue(req);
+    }
+
+    public interface VolleyCallback{
+        void onSuccess(String result);
     }
 }
